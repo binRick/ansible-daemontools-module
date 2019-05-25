@@ -14,7 +14,7 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = '''
 ---
-module: vpntech_services
+module: daemontools_services
 
 short_description: Query Daemontools Services
 
@@ -35,7 +35,7 @@ author:
 
 EXAMPLES = '''
 - name: Query Services
-  vpntech_services:
+  daemontools_services:
   register: services
 - debug: var=services
 
