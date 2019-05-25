@@ -75,6 +75,18 @@ class DaemontoolsScanService(BaseService):
             return False
 
 
+    def summarize_services(self, services):
+	upServices = []
+	downServices = []
+	for s in services:
+	  if s['state'] == 'up':
+	    upServices.append(s)
+	  else:
+	    downServices.append(s)
+	summary = '{} Up Services and {} Down Services'.format(len(upServices),len(downServices))
+	return summary
+
+
     def gather_services(self):
         services = {}
 	if DEBUG_MODE:
@@ -91,25 +103,36 @@ class DaemontoolsScanService(BaseService):
 	self.checkServicesCommand = "{} /service/*".format(svstat_path)
         rc, stdout, stderr = self.module.run_command(self.checkServicesCommand, use_unsafe_shell=True)
 
-
-
 	if DEBUG_MODE:
           print("daemontools_enabled={}".format(self.daemontools_enabled()))
           print("rc={}".format(rc))
           print("stdout={}".format(stdout))
           print("stderr={}".format(stderr))
 
-
         for line in stdout.split("\n"):
-            line_data = line.strip().split()
+	    line = line.strip()
+	    line_data = line.split()
+
+	    if len(line_data) == 0:
+	      continue
+
 	    if DEBUG_MODE:
 	      print('line_data={}'.format(line_data))
 
-            if len(line_data) != 7:
-                continue
 	    newService = {}
-	    newService['path'] = line_data[0]
+	    newService['path'] = line_data[0].replace(':','')
 	    newServiceName = newService['path'].split('/')[-1]
+
+	    if 'supervise not running' in line or len(line_data) != 7:
+		    newService['svstat'] = line
+		    newService['state'] = 'down'
+		    newService['status'] = 'stopped'
+		    newService['pid'] = None
+		    newService['seconds'] = None
+            	    services[newServiceName] = newService
+		    continue
+
+
 	    newService['state'] = line_data[1]
 	    newService['status'] = line_data[6]
 
@@ -190,14 +213,13 @@ def run_module():
 
 
     result['services'] = services
+    #result['msg'] = self.summarize_services(result['services'])
+
 
     module.exit_json(**result)
 
 if __name__ == '__main__':
     run_module()
-
-
-
 
 def mkdir_p(path):
     try:
